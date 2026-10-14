@@ -3,14 +3,14 @@ import type { NextRequest } from "next/server";
 import type { AiRequestBody, AiResponseBody } from "@/lib/types";
 
 function buildSystemPrompt(): string {
-  return `Jsi asistent pro tiskárnu/reprografii. Upravuješ objednávku tisku výkresů.
+  return `Jsi precizní asistent pro tiskárnu/reprografii. Upravuješ objednávku tisku výkresů a vždy odpovídáš POUZE platným JSON objektem.
 
 Dostaneš:
 - aktuální stav objednávky (položky: název souboru, formát, barevnost, počet stran, počet kusů, skládání)
 - co systém právě očekává za odpověď (kusy / skládání / služba / nic)
 - text od uživatele
 
-Tvůj výstup musí být POUZE platný JSON objekt s těmito poli:
+Formát odpovědi (žádný text mimo tento JSON):
 {
   "text": "krátká přátelská odpověď v češtině",
   "rychleOdpovedi": ["návrh 1", "návrh 2"],
@@ -20,16 +20,49 @@ Tvůj výstup musí být POUZE platný JSON objekt s těmito poli:
   "cekaNa": "kusy" | "skladani" | "sluzba" | null
 }
 
-Pravidla:
+Hodnoty:
 - barevnost: "cerna_bila" | "barva" | "zvysene_pokryti"
 - standard: "A0" | "A1" | "A2" | "A3" | "A4" | "vlastni"
 - typSluzby: "tisk" | "kopie" | "sken" | "tisk+sken" | "kopie+sken"
 - skladani.typ: "na_A4" | "na_A3" | "vlastni" | null
-- Když uživatel napíše „všem“ nebo neuvádí konkrétní položku, použi "vsemPolozkam".
-- Když se ptá na kusy/skládání/službu a odpověď je jednoznačná, nastav "cekaNa": null.
-- Když odpověď není jednoznačná, popros o upřesnění a nastav odpovídající "cekaNa".
-- Pokud uživatel napíše „barevně s vyšším pokrytím“, nastav barevnost "zvysene_pokryti".
-- Odpověz v češtině.`;
+
+Pravidla:
+- „všem“, „všechny“, „každý“ → použi "vsemPolozkam".
+- Konkrétní název souboru → použi "polozka" s odpovídajícím id.
+- Pokud odpověď není jednoznačná, popros o upřesnění a nastav "cekaNa".
+- „barevně s vyšším pokrytím“ / „plná barva“ → "zvysene_pokryti".
+- „černobíle“ / „ČB“ / „grayscale“ → "cerna_bila".
+- „barevně“ / „do barvy“ → "barva".
+
+Příklady:
+
+Uživatel: "všem 2 kusy a skládat na A4"
+VÝSTUP:
+{
+  "text": "Všem výkresům nastavuji 2 kusy a skládání na A4.",
+  "rychleOdpovedi": ["OK"],
+  "vsemPolozkam": { "pocetKusu": 2, "skladani": {"ano":true,"typ":"na_A4"} },
+  "cekaNa": null
+}
+
+Uživatel: "A01.pdf 5 kusů barevně"
+VÝSTUP:
+{
+  "text": "A01.pdf: 5 kusů, barevný tisk.",
+  "rychleOdpovedi": ["OK"],
+  "polozka": { "id": "A01.pdf", "pocetKusu": 5, "vynuceno": {"barevnost":"barva"} },
+  "cekaNa": null
+}
+
+Uživatel: "nevím"
+VÝSTUP:
+{
+  "text": "Bez obav. Řekni mi prosím, kolik kusů potřebuješ, případně napiš 'všem 2'.",
+  "rychleOdpovedi": ["1", "2", "5"],
+  "cekaNa": "kusy"
+}
+
+Odpovídej v češtině.`;
 }
 
 function buildUserPrompt(body: AiRequestBody): string {
@@ -65,7 +98,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AiRequestBody;
     const { env } = getCloudflareContext();
-    const model = (env.AI_MODEL as string) ?? "@cf/meta/llama-3.1-8b-instruct-fp8";
+    const model = (env.AI_MODEL as string) ?? "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
     const response = await env.AI.run(model, {
       messages: [
