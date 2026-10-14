@@ -88,11 +88,76 @@ ${polozky || "žádné"}
 UŽIVATEL NAPSAL: "${vstup}"`;
 }
 
-function cleanJson(raw: string): string {
-  // Odstraní markdown blok ```json ... ```
-  const match = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  return match ? match[1] : raw;
+function extractResponse<T>(response: unknown): T {
+  if (typeof response === "string") {
+    const cleaned = response.replace(/```(?:json)?\s*([\s\S]*?)\s*```/, "$1");
+    return JSON.parse(cleaned) as T;
+  }
+  const obj = response as { response?: unknown };
+  if (obj.response !== undefined) return obj.response as T;
+  throw new Error("Unexpected AI response shape");
 }
+
+const CHAT_SCHEMA = {
+  type: "json_schema",
+  json_schema: {
+    type: "object",
+    properties: {
+      text: { type: "string" },
+      rychleOdpovedi: {
+        type: "array",
+        items: { type: "string" },
+      },
+      zmeny: { type: "object" },
+      polozka: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          pocetKusu: { type: "number" },
+          skladani: {
+            type: "object",
+            properties: {
+              ano: { type: "boolean" },
+              typ: { type: "string" },
+            },
+          },
+          vynuceno: {
+            type: "object",
+            properties: {
+              barevnost: { type: "string" },
+              standard: { type: "string" },
+            },
+          },
+        },
+      },
+      vsemPolozkam: {
+        type: "object",
+        properties: {
+          pocetKusu: { type: "number" },
+          skladani: {
+            type: "object",
+            properties: {
+              ano: { type: "boolean" },
+              typ: { type: "string" },
+            },
+          },
+          vynuceno: {
+            type: "object",
+            properties: {
+              barevnost: { type: "string" },
+              standard: { type: "string" },
+            },
+          },
+        },
+      },
+      cekaNa: {
+        type: ["string", "null"],
+        enum: ["kusy", "skladani", "sluzba", null],
+      },
+    },
+    required: ["text"],
+  },
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -105,16 +170,10 @@ export async function POST(req: NextRequest) {
         { role: "system", content: buildSystemPrompt() },
         { role: "user", content: buildUserPrompt(body) },
       ],
+      response_format: CHAT_SCHEMA,
     });
 
-    const raw =
-      typeof response === "string"
-        ? response
-        : (response as { response?: string }).response ?? JSON.stringify(response);
-
-    const jsonText = cleanJson(raw);
-    const parsed = JSON.parse(jsonText) as AiResponseBody;
-
+    const parsed = extractResponse<AiResponseBody>(response);
     return Response.json(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

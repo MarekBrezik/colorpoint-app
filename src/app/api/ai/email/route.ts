@@ -46,7 +46,8 @@ Dostaneš:
 
 Pravidla:
 - Pro každé PDF vytvoř jednu položku.
-- Údaje z preflightu (rozměry, počet stran, barevnost) mají absolutní prioritu – nikdy je neměň.
+- Rozměry a počet stran z preflightu mají absolutní prioritu – nikdy je neměň.
+- Barevnost z preflightu je výchozí, ale klient může požadovat jinou. Pokud e-mail explicitně říká „černobíle“, „barevně“, „do barvy“, „s vysokým pokrytím“ apod., použij jeho instrukci.
 - Počet kusů, skládání a typ služby ber z e-mailu.
 - Globální instrukce („všechny 2× a skládat na A4“, „každý výkres barevně“) aplikuj na všechny položky.
 - Konkrétní instrukce k souboru aplikuj jen na něj.
@@ -135,10 +136,61 @@ PDF SOUBORY:
 ${souboryText}`;
 }
 
-function cleanJson(raw: string): string {
-  const match = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  return match ? match[1] : raw;
+function extractResponse<T>(response: unknown): T {
+  if (typeof response === "string") {
+    const cleaned = response.replace(/```(?:json)?\s*([\s\S]*?)\s*```/, "$1");
+    return JSON.parse(cleaned) as T;
+  }
+  const obj = response as { response?: unknown };
+  if (obj.response !== undefined) return obj.response as T;
+  throw new Error("Unexpected AI response shape");
 }
+
+const EMAIL_SCHEMA = {
+  type: "json_schema",
+  json_schema: {
+    type: "object",
+    properties: {
+      polozky: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            nazevSouboru: { type: "string" },
+            format: {
+              type: "object",
+              properties: {
+                standard: { type: "string" },
+                sirkaMm: { type: "number" },
+                vyskaMm: { type: "number" },
+              },
+              required: ["standard", "sirkaMm", "vyskaMm"],
+            },
+            pocetStran: { type: "number" },
+            barevnost: { type: "string" },
+            pocetKusu: { type: "number" },
+            skladani: { type: "string" },
+            typSluzby: { type: "string" },
+          },
+          required: [
+            "nazevSouboru",
+            "format",
+            "pocetStran",
+            "barevnost",
+            "pocetKusu",
+            "skladani",
+            "typSluzby",
+          ],
+        },
+      },
+      dotazy: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["polozky", "dotazy"],
+  },
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -151,16 +203,10 @@ export async function POST(req: NextRequest) {
         { role: "system", content: buildPrompt(body) },
         { role: "user", content: "Zpracuj tuto poptávku a vrať JSON." },
       ],
+      response_format: EMAIL_SCHEMA,
     });
 
-    const raw =
-      typeof response === "string"
-        ? response
-        : (response as { response?: string }).response ?? JSON.stringify(response);
-
-    const jsonText = cleanJson(raw);
-    const parsed = JSON.parse(jsonText) as AiEmailResponseBody;
-
+    const parsed = extractResponse<AiEmailResponseBody>(response);
     return Response.json(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
