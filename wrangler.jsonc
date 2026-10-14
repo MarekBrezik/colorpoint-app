@@ -8,6 +8,8 @@
   },
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Později: Workers AI binding pro skutečného asistenta
-  // "ai": { "binding": "AI" },
+  "ai": { "binding": "AI" },
+  "vars": {
+    "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct"
+  }
 }

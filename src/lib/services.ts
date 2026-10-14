@@ -1,4 +1,4 @@
-import type { VykresZakazka } from "./types";
+import type { AiRequestBody, AiResponseBody, CekanePole, VykresZakazka } from "./types";
 
 /**
  * Servisní vrstva – jediné místo, kde se bude měnit napojení na backend.
@@ -6,8 +6,24 @@ import type { VykresZakazka } from "./types";
  * Cloudflare Workers (API routes / service bindings):
  *   - fetchMailZpravy()      → napojení na schránku (Workers + Email Routing)
  *   - vytvorNabidku()        → POST /api/nabidka → PDF nabídka / předání do dalšího modulu
- *   - aiExtrakce()           → Workers AI (parsing e-mailu, extrakce z PDF)
+ *   - aiAsistent()           → POST /api/ai → Workers AI
  */
+
+export async function aiAsistent(
+  vstup: string,
+  zakazka: VykresZakazka,
+  cekameNa: CekanePole,
+  cekanaPolozka: string | null,
+): Promise<AiResponseBody> {
+  const body: AiRequestBody = { vstup, zakazka, cekameNa, cekanaPolozka };
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`AI asistent failed: ${res.status}`);
+  return (await res.json()) as AiResponseBody;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function vytvorNabidku(zakazka: VykresZakazka): Promise<{ id: string }> {

@@ -64,3 +64,30 @@ export interface ChatZprava {
   text: string;
   rychleOdpovedi?: string[];
 }
+
+/** Tělo požadavku na /api/ai. */
+export interface AiRequestBody {
+  vstup: string;
+  zakazka: VykresZakazka;
+  cekameNa: CekanePole;
+  cekanaPolozka: string | null;
+}
+
+/** Odpověď z /api/ai. */
+export interface AiResponseBody {
+  text: string;
+  rychleOdpovedi?: string[];
+  zmeny?: Partial<VykresZakazka>;
+  polozka?: {
+    id: string;
+    pocetKusu?: number;
+    skladani?: Partial<PolozkaVykres["skladani"]>;
+    vynuceno?: PolozkaVykres["vynuceno"];
+  };
+  vsemPolozkam?: {
+    pocetKusu?: number;
+    skladani?: Partial<PolozkaVykres["skladani"]>;
+    vynuceno?: PolozkaVykres["vynuceno"];
+  };
+  cekaNa?: CekanePole;
+}
