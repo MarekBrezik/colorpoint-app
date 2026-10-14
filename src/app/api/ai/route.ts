@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AiRequestBody;
     const { env } = getCloudflareContext();
-    const model = (env.AI_MODEL as string) ?? "@cf/meta/llama-3.3-70b-instruct";
+    const model = (env.AI_MODEL as string) ?? "@cf/meta/llama-3.1-8b-instruct-fp8";
 
     const response = await env.AI.run(model, {
       messages: [
