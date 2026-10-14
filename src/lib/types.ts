@@ -91,3 +91,33 @@ export interface AiResponseBody {
   };
   cekaNa?: CekanePole;
 }
+
+/** Tělo požadavku na /api/ai/email. */
+export interface AiEmailRequestBody {
+  emailText: string;
+  soubory: Array<{
+    nazev: string;
+    sirkaMm: number;
+    vyskaMm: number;
+    pocetStran: number;
+    barevnost: string;
+  }>;
+}
+
+/** Odpověď z /api/ai/email. */
+export interface AiEmailResponseBody {
+  polozky: Array<{
+    nazevSouboru: string;
+    format: {
+      standard: string;
+      sirkaMm: number;
+      vyskaMm: number;
+    };
+    pocetStran: number;
+    barevnost: string;
+    pocetKusu: number;
+    skladani: string;
+    typSluzby: string;
+  }>;
+  dotazy: string[];
+}
