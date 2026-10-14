@@ -5,12 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cloudflare": "opennextjs-cloudflare build",
-    "build:pages": "opennextjs-cloudflare build && mv .open-next/worker.js .open-next/_worker.js",
+    "build:worker": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint",
-    "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
-    "deploy": "npm run build:cloudflare && opennextjs-cloudflare deploy"
+    "preview": "npm run build:worker && opennextjs-cloudflare preview",
+    "deploy": "npm run build:worker && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
