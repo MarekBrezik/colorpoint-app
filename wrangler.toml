@@ -1,3 +1,5 @@
 # Konfigurace pro Cloudflare Pages (dashboard/Git integration).
 # Worker binding (AI) se nastavuje v dashboardu: Settings > Functions > Bindings.
-pages_build_output_dir = ".open-next/assets"
+# DŮLEŽITÉ: output dir musí být .open-next (ne .open-next/assets), jinak se rozbijí
+# relativní importy v _worker.js.
+pages_build_output_dir = ".open-next"
