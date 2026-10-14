@@ -115,11 +115,12 @@ export async function POST(req: NextRequest) {
 
     return Response.json(parsed);
   } catch (error) {
-    console.error("AI email route error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("AI email route error:", message);
     return Response.json(
       {
         polozky: [],
-        dotazy: ["Nepodařilo se zpracovat e-mail pomocí AI. Zkus to znovu nebo pokračuj ručně."],
+        dotazy: [`AI extrakce selhala: ${message}`],
       } as AiEmailResponseBody,
       { status: 200 },
     );

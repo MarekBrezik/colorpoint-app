@@ -136,7 +136,8 @@ function parseKusy(t: string): number | null {
   return n > 0 && n < 10000 ? n : null;
 }
 
-const jeHromadne = (t: string) => /\bvšem\b|\bvšude\b|\bvšechny\b|\bkažd\w*\b|\bvše\b/.test(t);
+const jeHromadne = (t: string) =>
+  /\bvšem\b|\bvšude\b|\bvšechny\b|\bkažd\w*\b|\bvše\b|\boba\b|\bobě\b/.test(t);
 
 // Slovesa, která znamenají vynucení formátu (ne skládání): "vytiskni na A1"…
 const FORMAT_TRIGGER = /formát|vytisk|udělej|dej |vynuť|přehoď|přeformát|zmenši|zvětši|výstup|tiskni|rozměr/i;

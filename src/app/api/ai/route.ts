@@ -84,10 +84,11 @@ export async function POST(req: NextRequest) {
 
     return Response.json(parsed);
   } catch (error) {
-    console.error("AI route error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("AI route error:", message);
     return Response.json(
       {
-        text: "Omlouvám se, AI asistent momentálně neodpovídá. Zkus to prosím znovu.",
+        text: `AI asistent selhal: ${message}`,
         cekaNa: null,
       } as AiResponseBody,
       { status: 200 },

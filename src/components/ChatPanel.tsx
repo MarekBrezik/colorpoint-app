@@ -7,7 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useZakazka } from "@/store/useZakazka";
 import { odpovezNaVstup, uvodniZprava } from "@/lib/assistant";
-import { SendHorizonal, BotMessageSquare } from "lucide-react";
+import { aiAsistent } from "@/lib/services";
+import type { OdpovedAsistenta } from "@/lib/assistant";
+import { SendHorizonal, BotMessageSquare, Loader2 } from "lucide-react";
 
 let idCounter = 100;
 const nid = () => `c${++idCounter}`;
@@ -21,11 +23,11 @@ export function ChatPanel() {
     aktualizujSkladaniPolozky,
     aktualizujVynuceni,
     aktualizujVsechnyPolozky,
-    zpracovavaSe,
     cekameNa,
     setCekameNa,
   } = useZakazka();
   const [vstup, setVstup] = useState("");
+  const [nacitam, setNacitam] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
@@ -41,14 +43,7 @@ export function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [zpravy]);
 
-  const odeslat = (text: string) => {
-    const t = text.trim();
-    if (!t) return;
-    pridejZpravu({ id: nid(), role: "user", text: t });
-    setVstup("");
-
-    const stav = useZakazka.getState();
-    const odp = odpovezNaVstup(t, stav.zakazka, stav.cekameNa, stav.cekanaPolozka);
+  const aplikujOdpoved = (odp: OdpovedAsistenta) => {
     if (odp.zmeny) aktualizujZakazku(odp.zmeny);
     if (odp.polozka) {
       const { id, pocetKusu, skladani, vynuceno } = odp.polozka;
@@ -66,16 +61,32 @@ export function ChatPanel() {
       );
     }
     if (odp.cekaNa !== undefined) setCekameNa(odp.cekaNa, odp.cekanaPolozka);
+  };
 
-    // malá prodleva pro přirozenější pocit
-    setTimeout(() => {
-      pridejZpravu({
-        id: nid(),
-        role: "ai",
-        text: odp.text,
-        rychleOdpovedi: odp.rychleOdpovedi,
-      });
-    }, 300);
+  const odeslat = async (text: string) => {
+    const t = text.trim();
+    if (!t || nacitam) return;
+    pridejZpravu({ id: nid(), role: "user", text: t });
+    setVstup("");
+    setNacitam(true);
+
+    const stav = useZakazka.getState();
+    let odp: OdpovedAsistenta;
+    try {
+      odp = await aiAsistent(t, stav.zakazka, stav.cekameNa, stav.cekanaPolozka);
+    } catch (e) {
+      console.warn("AI asistent selhal, používám lokální logiku:", e);
+      odp = odpovezNaVstup(t, stav.zakazka, stav.cekameNa, stav.cekanaPolozka);
+    }
+
+    aplikujOdpoved(odp);
+    setNacitam(false);
+    pridejZpravu({
+      id: nid(),
+      role: "ai",
+      text: odp.text,
+      rychleOdpovedi: odp.rychleOdpovedi,
+    });
   };
 
   const posledniAi = [...zpravy].reverse().find((z) => z.role === "ai");
@@ -105,9 +116,10 @@ export function ChatPanel() {
                 {z.text}
               </div>
             ))}
-            {zpracovavaSe && (
-              <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                Analyzuji soubory…
+            {nacitam && (
+              <div className="self-start rounded-2xl rounded-tl-sm bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600">
+                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                Přemýšlím…
               </div>
             )}
             <div ref={bottomRef} />
@@ -158,7 +170,7 @@ export function ChatPanel() {
               }
             }}
           />
-          <Button type="submit" size="icon" disabled={!vstup.trim()}>
+          <Button type="submit" size="icon" disabled={!vstup.trim() || nacitam}>
             <SendHorizonal className="h-4 w-4" />
           </Button>
         </form>

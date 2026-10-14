@@ -33,7 +33,6 @@ export async function aiAsistent(
   return (await res.json()) as AiResponseBody;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BAREVNOST_AI_MAP: Record<string, PolozkaVykres["detekce"]["barevnost"]> = {
   "černobílá": "cerna_bila",
   "barevná": "barva",
